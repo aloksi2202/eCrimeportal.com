@@ -1,0 +1,22 @@
+# Credentials and local environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies and build output
+**/node_modules/
+**/target/
+**/dist/
+**/build/
+coverage/
+
+# Git metadata should never be nested in the exported source archive
+.git/
+
+# Local IDE / OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+*.swp
