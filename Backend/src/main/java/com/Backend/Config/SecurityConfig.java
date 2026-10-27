@@ -1,13 +1,19 @@
+
 package com.Backend.Config;
 
 import com.Backend.Filters.JwtFilter;
 import com.Backend.Services.UserDetailsServiceImpl;
+
+import jakarta.servlet.http.HttpServletResponse;
+
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -20,7 +26,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
@@ -32,35 +37,7 @@ public class SecurityConfig {
     private UserDetailsServiceImpl userDetailsServiceImpl;
 
     @Autowired
-    private Oauth2SuccessHandler successHandler;
-
-    @Autowired
     private JwtFilter jwtFilter;
-
-    @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http
-                .cors(cors->cors.configurationSource(corsConfigurationSource()))
-                .authorizeHttpRequests(request -> request
-                        .requestMatchers("/user/**","/police/**","/admin/**").authenticated()
-                        .requestMatchers("/public/**").permitAll()
-                        .anyRequest().authenticated())
-
-                .oauth2Login(oauth2-> oauth2
-                        .failureHandler((request, response, exception) -> {
-                            log.error("Oauth2 error : {}", exception.getMessage());
-                        })
-                        .successHandler(successHandler)
-                )
-
-                .csrf(AbstractHttpConfigurer::disable)
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
-    }
-
-    public void configGlobal(AuthenticationManagerBuilder authenticationManagerBuilder)throws Exception{
-        authenticationManagerBuilder.userDetailsService(userDetailsServiceImpl).passwordEncoder(passwordEncoder());
-    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -68,20 +45,83 @@ public class SecurityConfig {
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration auth)throws Exception{
-        return auth.getAuthenticationManager();
+    public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsServiceImpl);
+
+        provider.setPasswordEncoder(passwordEncoder());
+
+        return provider;
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource(){
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            Oauth2SuccessHandler successHandler) throws Exception {
+
+        return http
+                .cors(cors ->
+                        cors.configurationSource(corsConfigurationSource()))
+                .csrf(AbstractHttpConfigurer::disable)
+                .authenticationProvider(authenticationProvider())
+                .authorizeHttpRequests(request -> request
+                        .requestMatchers(
+                                "/public/**",
+                                "/oauth2/**",
+                                "/login/**"
+                        ).permitAll()
+                        .requestMatchers(
+                                "/user/**",
+                                "/police/**",
+                                "/admin/**"
+                        ).authenticated()
+                        .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .failureHandler((request, response, exception) -> {
+                            log.error("OAuth2 login failed",
+                                    exception);
+
+                            response.sendError(
+                                    HttpServletResponse.SC_UNAUTHORIZED,
+                                    "OAuth2 login failed"
+                            );
+                        })
+                        .successHandler(successHandler)
+                )
+                .addFilterBefore(
+                        jwtFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+                .build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
         config.setAllowCredentials(true);
-        config.setAllowedOrigins(Arrays.asList("http://127.0.0.1:5173", "http://localhost:5173"));
-        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+
+        config.setAllowedOrigins(List.of(
+                "http://localhost:5173",
+                "http://127.0.0.1:5173"
+        ));
+
+        config.setAllowedMethods(List.of(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
 
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source =
+                new UrlBasedCorsConfigurationSource();
+
         source.registerCorsConfiguration("/**", config);
 
         return source;

@@ -1,349 +1,479 @@
-import { useEffect, useState } from 'react';
-import { Link, Route, useNavigate } from 'react-router-dom'
+
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+
+const API_URL = "http://localhost:8080/public";
 
 const Register = () => {
+  const [msg, setMsg] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
-  const [registerButton, setRegisterButton] = useState(<h1>Register</h1>)
-  const [msg, setMsg] = useState('')
-  const [userNameStatus, setUserNameStatus] = useState('')
-  const [mobileStatus, setMobileStatus] = useState('')
-  const [emailStatus, setEmailStatus] = useState('')
-  const [username, setUsername] = useState('')
-  const [name, setName] = useState('')
-  const [mobile, setMobile] = useState('')
-  const [email, setEmail] = useState('')
-  const [address, setAddress] = useState('')
-  const [password, setPassword] = useState('')
-  const [rePassword, setRePassword] = useState('')
-  const [dob, setDob] = useState()
+  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
+  const [mobile, setMobile] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [password, setPassword] = useState("");
+  const [rePassword, setRePassword] = useState("");
+  const [dob, setDob] = useState("");
 
+  const [userNameStatus, setUserNameStatus] = useState("");
+  const [mobileStatus, setMobileStatus] = useState("");
+  const [emailStatus, setEmailStatus] = useState("");
 
-  const submitted = (e) => {
-    e.preventDefault()
-  }
+  // Check username availability
+  const checkUsername = async (value = username) => {
+    const cleanUsername = value.trim();
 
-
-  const checkUsername = async () => {
-    let link = "http://localhost:8080/public/check-username"
-    const response = await fetch(link, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-      },
-      body: username
-    });
-    const result = await response.text()
-    if (result === "Username already exists" || username.length < 6) {
-      setUserNameStatus(<p className='text-sm mt-0.5 text-red-600'>not available</p>)
-    }
-    if (result === "ok" && username.length > 5) {
-      setUserNameStatus(<p className='text-sm mt-0.5 text-green-600'>available</p>)
-      return result
+    if (cleanUsername.length < 6) {
+      setUserNameStatus("Username must be at least 6 characters");
+      return false;
     }
 
-  }
+    try {
+      const response = await fetch(`${API_URL}/check-username`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: cleanUsername,
+      });
 
+      if (!response.ok) {
+        throw new Error("Username check failed");
+      }
+
+      const result = (await response.text()).trim();
+
+      if (result === "ok") {
+        setUserNameStatus("Username available");
+        return true;
+      }
+
+      if (result === "Username already exists") {
+        setUserNameStatus("Username already exists");
+        return false;
+      }
+
+      setUserNameStatus(result || "Could not check username");
+      return false;
+    } catch (error) {
+      console.error("Username check error:", error);
+      setUserNameStatus("Unable to check username");
+      return false;
+    }
+  };
+
+  // Check mobile availability
+  const checkMobile = async (value = mobile) => {
+    const cleanMobile = value.trim();
+
+    if (!/^\d{10}$/.test(cleanMobile)) {
+      setMobileStatus("Enter a valid 10-digit mobile number");
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/check-mobile`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: cleanMobile,
+      });
+
+      if (!response.ok) {
+        throw new Error("Mobile check failed");
+      }
+
+      const result = (await response.text()).trim();
+
+      if (result === "ok") {
+        setMobileStatus("");
+        return true;
+      }
+
+      if (result === "Mobile no. already exists") {
+        setMobileStatus("Mobile number already exists");
+        return false;
+      }
+
+      setMobileStatus(result || "Could not check mobile");
+      return false;
+    } catch (error) {
+      console.error("Mobile check error:", error);
+      setMobileStatus("Unable to check mobile");
+      return false;
+    }
+  };
+
+  // Check email availability
+  const checkEmail = async (value = email) => {
+    const cleanEmail = value.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      setEmailStatus("Enter a valid email address");
+      return false;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/check-email`, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: cleanEmail,
+      });
+
+      if (!response.ok) {
+        throw new Error("Email check failed");
+      }
+
+      const result = (await response.text()).trim();
+
+      if (result === "ok") {
+        setEmailStatus("");
+        return true;
+      }
+
+      if (result === "Email already exists") {
+        setEmailStatus("Email already exists");
+        return false;
+      }
+
+      setEmailStatus(result || "Could not check email");
+      return false;
+    } catch (error) {
+      console.error("Email check error:", error);
+      setEmailStatus("Unable to check email");
+      return false;
+    }
+  };
+
+  // Optional live checks while typing
   useEffect(() => {
-    if (username) {
-      checkUsername()
+    if (!username.trim()) {
+      setUserNameStatus("");
+      return;
     }
-    else {
-      setUserNameStatus('')
-    }
+
+    const timer = setTimeout(() => {
+      checkUsername(username);
+    }, 500);
+
+    return () => clearTimeout(timer);
   }, [username]);
 
+  useEffect(() => {
+    if (!mobile.trim()) {
+      setMobileStatus("");
+      return;
+    }
 
-  const checkMobile = async () => {
-    let link = "http://localhost:8080/public/check-mobile"
-    const response = await fetch(link, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-      },
-      body: mobile
-    });
-    const result = await response.text()
-    if (result === "Mobile no. already exists") {
-      setMobileStatus(<p className='text-sm text-red-600'>already exists</p>)
+    if (mobile.length < 10) {
+      setMobileStatus("Enter a 10-digit mobile number");
+      return;
     }
-    else if (mobile.length < 10) {
-      setMobileStatus(<p className='text-sm text-red-600'>enter full no.</p>)
-    }
-    else if (result === "ok" && mobile.length == 10) {
-      setMobileStatus('')
-      return result
-    }
-  }
+
+    const timer = setTimeout(() => {
+      checkMobile(mobile);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [mobile]);
 
   useEffect(() => {
-    if (mobile) {
-      checkMobile()
+    if (!email.trim()) {
+      setEmailStatus("");
+      return;
     }
-    else {
-      setMobileStatus('')
-    }
-  }
-    , [mobile]);
 
+    const timer = setTimeout(() => {
+      checkEmail(email);
+    }, 500);
 
-  const checkEmail = async () => {
-    let link = "http://localhost:8080/public/check-email"
-    const response = await fetch(link, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain",
-      },
-      body: email
-    });
-    const result = await response.text()
-    if (result === "Email already exists") {
-      setEmailStatus(<p className='text-sm text-red-600'>already exists</p>)
-    }
-    else if (result === "ok" && email.length > 14) {
-      setEmailStatus('')
-      return result
-    }
-  }
-
-  useEffect(() => {
-    if (email) {
-      checkEmail()
-    }
-    else {
-      setEmailStatus('')
-    }
+    return () => clearTimeout(timer);
   }, [email]);
 
+  // Register user
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setMsg("");
 
-  const msgAlert = () => {
+    if (loading || registered) return;
+
+    if (
+      !username.trim() ||
+      !name.trim() ||
+      !mobile.trim() ||
+      !email.trim() ||
+      !address.trim() ||
+      !dob ||
+      !password ||
+      !rePassword
+    ) {
+      setMsg("Please fill in all fields");
+      return;
+    }
+
+    if (username.trim().length < 6) {
+      setMsg("Username must be at least 6 characters");
+      return;
+    }
+
+    if (!/^\d{10}$/.test(mobile.trim())) {
+      setMsg("Mobile number must contain exactly 10 digits");
+      return;
+    }
 
     if (password.length < 8) {
-      setMsg("password should be 8 digits long")
-      return false
+      setMsg("Password must be at least 8 characters");
+      return;
     }
-    else if (password != rePassword) {
-      setMsg('Password is not matching')
-      return false
-    }
-    else {
-      setMsg('')
-      return true
-    }
-  }
 
-  useEffect(() => {
-    if (password || rePassword) {
-      msgAlert()
+    if (password !== rePassword) {
+      setMsg("Passwords do not match");
+      return;
     }
-    else {
-      setMsg('')
-    }
-  },
-    [password, rePassword]
-  );
 
+    setLoading(true);
 
-  const save = async () => {
-    if (username && mobile && email && password && rePassword && dob && name && address) {
-      const a = await checkUsername();
-      const b = await checkMobile();
-      const c = await checkEmail();
-      if (a === "ok" && b === "ok" & c === "ok" && msgAlert()) {
-        let link = "http://localhost:8080/public/sign-up"
-        const response = await fetch(link, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ username: username, dob: dob, name: name, mobile: mobile, email: email, password: rePassword, address: address })
-        });
-        const result = await response.text()
-        if (result === "saved") {
-          return result
-        }
+    try {
+      // Recheck availability before registration
+      const usernameAvailable = await checkUsername(username);
+      const mobileAvailable = await checkMobile(mobile);
+      const emailAvailable = await checkEmail(email);
+
+      if (!usernameAvailable || !mobileAvailable || !emailAvailable) {
+        setMsg("Please correct the username, mobile or email fields");
+        return;
       }
-    }
-  }
 
+      const response = await fetch(`${API_URL}/sign-up`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          username: username.trim(),
+          name: name.trim(),
+          mobile: mobile.trim(),
+          email: email.trim(),
+          address: address.trim(),
+          password: password,
+          dob: dob,
+        }),
+      });
 
-  const check = () => {
+      const result = (await response.text()).trim();
 
-    const x = async () => {
-      const a = await save();
-      if (a === "saved" && name && dob && address) {
-        console.log('done')
-        setRegisterButton(<Link to={"/LogIn"}>Go to login</Link>)
-        alert("Successfully registered")
+      if (!response.ok || result !== "saved") {
+        setMsg(result || `Registration failed (${response.status})`);
+        return;
       }
-    }; x()
-  }
 
+      setRegistered(true);
+      setMsg("Registration successful!");
+    } catch (error) {
+      console.error("Registration error:", error);
+      setMsg(
+        "Unable to connect to the server. Check that the backend is running."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  const inputClass =
+    "w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm";
 
+  const labelClass = "block text-sm font-bold mb-2 mt-3";
 
+  const statusClass = (status) =>
+    status === "Username available"
+      ? "text-sm mt-1 text-green-400"
+      : "text-sm mt-1 text-red-400";
 
   return (
-    <div className="flex justify-center py-12 bg-[#111C30] text-white">
-      <div className=" h-full p-20 w-4/7 bg-[#0B1524] rounded-2xl ">
+    <div className="min-h-screen flex justify-center items-center py-12 px-4 bg-[#111C30] text-white">
+      <div className="w-full max-w-4xl p-6 md:p-12 bg-[#0B1524] rounded-2xl">
+        <h1 className="font-bold text-3xl md:text-4xl pb-4 text-center">
+          Register Details
+        </h1>
 
-        <h1 className="font-bold text-4xl pb-4 text-center">Register Details</h1>
-        <p className='text-center text-red-600 h-3 text-sm'>{msg}</p>
-        <form onSubmit={(e) => {
-          submitted(e)
-        }}>
-          <div className="flex gap-30 mt-5">
-            <div>
-              <div className='flex flex-row justify-between mr-3'>
-                <label className="block font-bold   mb-2" htmlFor="username">
+        <p className="text-center text-red-400 min-h-6 text-sm">
+          {msg}
+        </p>
+
+        {registered ? (
+          <div className="text-center mt-6">
+            <p className="text-green-400 mb-4">
+              Your account has been created successfully.
+            </p>
+            <Link
+              to="/LogIn"
+              className="inline-block bg-blue-800 hover:bg-blue-700 px-8 py-3 rounded-3xl"
+            >
+              Go to Login
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={handleRegister}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+              <div>
+                <label className={labelClass} htmlFor="username">
                   Username
                 </label>
-                {userNameStatus}
+                <input
+                  required
+                  id="username"
+                  type="text"
+                  minLength={6}
+                  autoComplete="username"
+                  placeholder="Enter your username"
+                  className={inputClass}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+                {userNameStatus && (
+                  <p className={statusClass(userNameStatus)}>
+                    {userNameStatus}
+                  </p>
+                )}
+
+                <label className={labelClass} htmlFor="password">
+                  Password
+                </label>
+                <input
+                  required
+                  id="password"
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="Create your password"
+                  className={inputClass}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+
+                <label className={labelClass} htmlFor="rePassword">
+                  Re-enter Password
+                </label>
+                <input
+                  required
+                  id="rePassword"
+                  type="password"
+                  minLength={8}
+                  autoComplete="new-password"
+                  placeholder="Re-enter your password"
+                  className={inputClass}
+                  value={rePassword}
+                  onChange={(e) => setRePassword(e.target.value)}
+                />
+
+                {rePassword && password !== rePassword && (
+                  <p className="text-sm mt-1 text-red-400">
+                    Passwords do not match
+                  </p>
+                )}
               </div>
-              <input
-                required
-                id="username"
-                type="text"
-                placeholder="Enter your Username"
-                className="w-full bg-gray-200 text-gray-800 pl-2 mr-30  py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
-                value={username}
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                }}
-              />
 
-              <label className="block font-bold text-sm font-boldmb-2" htmlFor="mobile">
-                Password
-              </label>
-              <input
-                required
-                id="password"
-                type="password"
-                placeholder="Create your new Password"
-                className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                }}
-              />
+              <div>
+                <label className={labelClass} htmlFor="fullname">
+                  Full Name
+                </label>
+                <input
+                  required
+                  id="fullname"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Enter your full name"
+                  className={inputClass}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
 
-              <label className="block text-sm font-bold font-boldmb-2" htmlFor="rePassword">
-                Re-enter Password
-              </label>
-              <input
-                required
-                id="rePassword"
-                type="password"
-                placeholder="Re-enter your Password"
-                className="w-full bg-gray-200  text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
-                value={rePassword}
-                onChange={(e) => {
-                  setRePassword(e.target.value)
-                }}
-              />
+                <label className={labelClass} htmlFor="dob">
+                  Date of Birth
+                </label>
+                <input
+                  required
+                  id="dob"
+                  type="date"
+                  className={inputClass}
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                />
 
-            </div>
-            <div>
-              <label className="block  text-sm font-bold mb-2" htmlFor="fullname">
-                Full Name
-              </label>
-              <input
-                required
-                id="fullname"
-                type="text"
-                placeholder="Enter your Full name"
-                className="w-full bg-gray-200 text-gray-800 pl-2 mr-30  py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                }}
-              />
-
-              <label className="block font-bold text-sm mb-2" htmlFor="dob">
-                Date of Birth
-              </label>
-              <input
-                required
-                id="dob"
-                type="date"
-                placeholder="Enter your Full date of birth"
-                className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
-                value={dob}
-                onChange={(e) => {
-                  setDob(e.target.value);
-                }}
-              />
-
-              <div className='flex flex-row justify-between mr-2 py-1'>
-                <label className="block  text-sm font-bold " htmlFor="mobile">
+                <label className={labelClass} htmlFor="mobile">
                   Mobile
                 </label>
-                {mobileStatus}
+                <input
+                  required
+                  id="mobile"
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  minLength={10}
+                  autoComplete="tel"
+                  placeholder="Enter your 10-digit mobile number"
+                  className={inputClass}
+                  value={mobile}
+                  onChange={(e) =>
+                    setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))
+                  }
+                />
+                {mobileStatus && (
+                  <p className="text-sm mt-1 text-red-400">
+                    {mobileStatus}
+                  </p>
+                )}
               </div>
-              <input
-                required
-                id="mobile"
-                type="tel"
-                maxLength={10}
-                minLength={9}
-                placeholder="Enter your valid phone no."
-                className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
-                value={mobile}
-                onChange={(e) => {
-                  setMobile(e.target.value);
-                }}
-              />
-
-
             </div>
 
-          </div>
-
-          <div>
-            <div className='flex flex-row justify-between mr-10 mt-0.5 '>
-              <label className="block  font-bold text-sm mb-2" htmlFor="email">
-                Email
-              </label>
-              {emailStatus}
-            </div>
+            <label className={labelClass} htmlFor="email">
+              Email
+            </label>
             <input
               required
               id="email"
               type="email"
-              placeholder="Enter your Email"
-
-              className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder-gray-500 text-sm"
+              autoComplete="email"
+              placeholder="Enter your email"
+              className={inputClass}
               value={email}
-              onChange={(e) => {
-                setEmail(e.target.value);
-              }}
+              onChange={(e) => setEmail(e.target.value)}
             />
+            {emailStatus && (
+              <p className="text-sm mt-1 text-red-400">{emailStatus}</p>
+            )}
 
-            <label className="block qfont-bold text-sm mb-2" htmlFor="address">
+            <label className={labelClass} htmlFor="address">
               Address
             </label>
             <textarea
               required
-              cols={30}
-              rows={5}
               id="address"
-              type="text"
-              placeholder="Enter your Full Address"
-              className="w-full bg-gray-200 text-gray-800 px-4 py-3 rounded-2xl focus:outline-none focus:ring-2  focus:ring-blue-300 placeholder-gray-500 text-sm"
+              rows={4}
+              placeholder="Enter your full address"
+              className={inputClass}
               value={address}
-              onChange={(e) => {
-                setAddress(e.target.value);
-              }}
+              onChange={(e) => setAddress(e.target.value)}
             />
-            <div className="text-center pt-4">
-              <button onClick={() => [
-                check()
 
-              ]} className="bg-blue-800 text-white w-140 h-10 rounded-3xl">
-                {registerButton}
+            <div className="text-center pt-6">
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-800 hover:bg-blue-700 disabled:opacity-60 text-white w-full md:w-64 h-12 rounded-3xl"
+              >
+                {loading ? "Registering..." : "Register"}
               </button>
             </div>
-          </div>
-        </form>
+
+            <p className="text-center mt-5 text-sm">
+              Already have an account?{" "}
+              <Link to="/LogIn" className="text-blue-400 hover:underline">
+                Login
+              </Link>
+            </p>
+          </form>
+        )}
       </div>
     </div>
   );

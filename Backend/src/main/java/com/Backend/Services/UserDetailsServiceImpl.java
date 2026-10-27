@@ -1,7 +1,9 @@
+
 package com.Backend.Services;
 
 import com.Backend.Entity.User;
 import com.Backend.Repository.UserRepo;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,17 +17,33 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private UserRepo userRepo;
 
     @Override
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user=userRepo.findByUsername(username);
-        if (user!=null){
-            UserDetails userDetails=org.springframework.security.core.userdetails.User.builder()
-                    .username(user.getUsername())
-                    .password(user.getPassword())
-                    .roles(String.valueOf(user.getRole()))
-                    .build();
-            return userDetails;
+    public UserDetails loadUserByUsername(String username)
+            throws UsernameNotFoundException {
+
+        User user = userRepo.findByUsername(username.trim());
+
+        if (user == null) {
+            throw new UsernameNotFoundException(
+                "User not found with username: " + username
+            );
         }
-        throw new UsernameNotFoundException("user not found with username : "+username);
+
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new UsernameNotFoundException(
+                "Password is missing for username: " + username
+            );
+        }
+
+        if (user.getRole() == null) {
+            throw new UsernameNotFoundException(
+                "Role is missing for username: " + username
+            );
+        }
+
+        return org.springframework.security.core.userdetails.User
+                .withUsername(user.getUsername())
+                .password(user.getPassword())
+                .roles(user.getRole().name())
+                .build();
     }
 }
-
